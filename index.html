@@ -161,8 +161,10 @@
   <div class="grid-top">
     <!-- Digital Pet Card -->
     <div class="card pet-card">
-      <div style="font-size: 12px; font-weight: 700; color: #16a34a; text-transform: uppercase; letter-spacing: 1px;">Digital Hydration Pet 🪴</div>
-      <div class="pet-avatar" id="petAvatar">😴</div>
+      <div style="font-size: 12px; font-weight: 700; color: #16a34a; text-transform: uppercase; letter-spacing: 1px;">Digital Hydration Pet</div>
+        <div class="pet-avatar">
+            <img id="petAvatarImg" src="pet_sleep.gif" alt="Digital Pet" style="width: 90px; height: 90px; object-fit: contain;">
+        </div>
       <div class="pet-speech" id="petSpeech">"หิวน้ำจังเลย... ดื่มน้ำกันเถอะ"</div>
     </div>
 
@@ -180,11 +182,11 @@
 
   <!-- Quick Action Control Bar -->
   <div class="card control-card">
-    <span style="font-size: 14px; font-weight: 700; color: #334155;">⚡ คำสั่งควบคุมด่วน (Action Controls):</span>
+    <span style="font-size: 14px; font-weight: 700; color: #334155;">Action Controls</span>
     <div style="display: flex; gap: 8px;">
-      <button class="btn-action" onclick="sendTareCommand()">⚖️ Tare เซตน้ำหนักศูนย์</button>
-      <button class="btn-action secondary" onclick="triggerInactivityAlert()">🔔 ทดสอบเตือนดื่มน้ำ</button>
-      <button class="btn-action secondary" onclick="sendResetTodayCommand()">🔄 รีเซ็ตยอดวันนี้</button>
+      <button class="btn-action" onclick="sendTareCommand()">Tare เซตน้ำหนักศูนย์</button>
+      <button class="btn-action secondary" onclick="triggerInactivityAlert()">ทดสอบเตือนดื่มน้ำ</button>
+      <button class="btn-action secondary" onclick="sendResetTodayCommand()">รีเซ็ตยอดวันนี้</button>
     </div>
   </div>
 
@@ -276,23 +278,23 @@
 
   // --- 4. Digital Pet & Streak Logic ---
   function updateDigitalPet(percent) {
-    const avatar = document.getElementById('petAvatar');
-    const speech = document.getElementById('petSpeech');
+  const avatarImg = document.getElementById('petAvatarImg');
+  const speech = document.getElementById('petSpeech');
 
-    if (percent >= 100) {
-      avatar.innerText = '🌸';
-      speech.innerText = '"สุดยอด! วันนี้ดื่มน้ำครบตามเป้าหมายแล้ว 🎉"';
-    } else if (percent >= 70) {
-      avatar.innerText = '🌿';
-      speech.innerText = '"เกือบถึงเป้าหมายแล้ว อีกนิดเดียว!"';
-    } else if (percent >= 30) {
-      avatar.innerText = '🌱';
-      speech.innerText = '"สดชื่นขึ้นแล้ว! ดื่มอีกเรื่อยๆ นะ"';
-    } else {
-      avatar.innerText = '😴';
-      speech.innerText = '"หิวน้ำจังเลย... ดื่มน้ำกันเถอะ"';
-    }
+  if (percent >= 100) {
+    avatarImg.src = 'cat-high.gif'; // GIF ต้นไม้บาน / สัตว์เลี้ยงเต้นฉลอง
+    speech.innerText = '"สุดยอด! วันนี้ดื่มน้ำครบตามเป้าหมายแล้ว 🎉"';
+  } else if (percent >= 70) {
+    avatarImg.src = 'cat-punch-cat.gif'; // GIF สดชื่นดีใจ
+    speech.innerText = '"เกือบถึงเป้าหมายแล้ว อีกนิดเดียว!"';
+  } else if (percent >= 30) {
+    avatarImg.src = 'sad-cat-cat.gif'; // GIF ดุ๊กดิ๊กกำลังเติบโต
+    speech.innerText = '"สดชื่นขึ้นแล้ว! ดื่มอีกเรื่อยๆ นะ"';
+  } else {
+    avatarImg.src = 'cat-cat-loading.gif'; // GIF หาวง่วงนอน / เหี่ยวเฉา
+    speech.innerText = '"หิวน้ำจังเลย... ดื่มน้ำกันเถอะ"';
   }
+}
 
   function updateStreakAndBadges(todayMl, goalMl) {
     let streak = parseInt(localStorage.getItem('water_streak')) || 0;
