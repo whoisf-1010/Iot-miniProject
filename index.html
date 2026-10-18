@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Bottle Dashboard</title>
+  <!-- Chart.js & MQTT.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    * { box-sizing: border-box; font-family: 'Sukhumvit Set', 'Sarabun', system-ui, sans-serif; margin: 0; padding: 0; }
+    body { background-color: #f1f4f5; color: #2d3748; padding: 24px; }
+    .container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+    
+    /* Header */
+    .header { display: flex; justify-content: space-between; align-items: center; }
+    .header-title p { font-size: 13px; color: #718096; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+    .header-title h1 { font-size: 24px; font-weight: 700; color: #1a202c; }
+    .header-controls { display: flex; gap: 8px; }
+    .btn { background: #e2e8f0; border: none; padding: 8px 16px; border-radius: 20px; font-size: 14px; cursor: pointer; transition: 0.2s; }
+    .btn.active { background: #0b6cb1; color: white; }
+    
+    /* Grid Cards */
+    .grid-top { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .card { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
+    
+    /* Left Card - Circular Progress */
+    .progress-card { display: flex; align-items: center; gap: 30px; }
+    .chart-container { position: relative; width: 160px; height: 160px; flex-shrink: 0; }
+    .chart-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+    .chart-label .percent { font-size: 28px; font-weight: 800; color: #1a202c; }
+    .chart-label .sub { font-size: 11px; color: #718096; }
+    .stats-list { display: flex; flex-direction: column; gap: 10px; }
+    .stat-item .label { font-size: 12px; color: #718096; }
+    .stat-item .value { font-size: 18px; font-weight: 700; color: #2b6cb0; }
+    .stat-item .value-sm { font-size: 14px; color: #4a5568; }
+
+    /* Right Card - Bottle Canvas */
+    .bottle-card { display: flex; align-items: center; justify-content: space-around; }
+    .bottle-wrapper { position: relative; width: 90px; height: 200px; border: 3px solid #2d3748; border-radius: 12px 12px 20px 20px; overflow: hidden; background: #fff; }
+    .bottle-cap { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); width: 34px; height: 12px; background: #2d3748; border-radius: 4px 4px 0 0; }
+    .water-fill { position: absolute; bottom: 0; width: 100%; background: #53a6d8; transition: height 0.5s ease; }
+    .badge { display: inline-block; padding: 4px 12px; background: #ebf8ff; color: #2b6cb0; border-radius: 6px; font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+    .bottle-stats { display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+    .bottle-stats .row { display: flex; justify-content: space-between; gap: 20px; }
+    .bottle-stats .val { font-weight: 600; }
+
+    /* Bar Chart Section */
+    .chart-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .chart-card-header h3 { font-size: 16px; font-weight: 700; }
+    .chart-card-header span { font-size: 12px; color: #a0aec0; }
+
+    /* Logs Section */
+    .log-list { display: flex; flex-direction: column; gap: 12px; max-height: 200px; overflow-y: auto; }
+    .log-item { display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid #edf2f7; font-size: 14px; }
+    .log-item .time { color: #a0aec0; width: 60px; }
+    .log-item .type { flex-grow: 1; font-weight: 600; }
+    .log-item .amount.drink { color: #2b6cb0; font-weight: 700; }
+    .log-item .amount.refill { color: #38a169; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-title">
+      <p>Smart Bottle</p>
+      <h1>ยอดดื่มน้ำของวันนี้</h1>
+    </div>
+    <div class="header-controls">
+      <button class="btn active" id="btnLive" onclick="setMode('live')">โหมดจริง (MQTT)</button>
+      <button class="btn" id="btnDemo" onclick="setMode('demo')">ลองโหมดเดโม</button>
+    </div>
+  </div>
+
+  <!-- Top Row -->
+  <div class="grid-top">
+    <!-- Progress Card -->
+    <div class="card progress-card">
+      <div class="chart-container">
+        <canvas id="gaugeChart"></canvas>
+        <div class="chart-label">
+          <div class="percent" id="lblPercent">0%</div>
+          <div class="sub">ของเป้าหมาย</div>
+        </div>
+      </div>
+      <div class="stats-list">
+        <div class="stat-item">
+          <div class="label">ดื่มแล้ววันนี้</div>
+          <div class="value" id="lblToday">0 มล.</div>
+        </div>
+        <div class="stat-item">
+          <div class="label">เป้าหมาย</div>
+          <div class="value-sm" id="lblGoal">2000 มล.</div>
+        </div>
+        <div class="stat-item">
+          <div class="label">เหลืออีก</div>
+          <div class="value-sm" id="lblRemain">2000 มล.</div>
+        </div>
+        <div class="stat-item">
+          <div class="label">ดื่มล่าสุด</div>
+          <div class="value-sm" id="lblLastDrink">-</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottle Status Card -->
+    <div class="card bottle-card">
+      <div style="position: relative;">
+        <div class="bottle-cap"></div>
+        <div class="bottle-wrapper">
+          <div class="water-fill" id="waterFill" style="height: 0%;"></div>
+        </div>
+      </div>
+      <div>
+        <div class="badge" id="lblState">กำลังเชื่อมต่อ...</div>
+        <div class="bottle-stats">
+          <div class="row"><span>น้ำในขวด</span><span class="val" id="lblWater">0 มล.</span></div>
+          <div class="row"><span>น้ำหนักรวม</span><span class="val" id="lblWeight">0.0 g</span></div>
+          <div class="row"><span>สัญญาณ WiFi</span><span class="val" id="lblRssi">- dBm</span></div>
+          <div class="row"><span>เปิดเครื่องมา</span><span class="val" id="lblUptime">-</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7-Day History Chart -->
+  <div class="card">
+    <div class="chart-card-header">
+      <h3>ย้อนหลัง 7 วัน (ข้อมูลจริง)</h3>
+      <span>เส้นประคือเป้าหมาย</span>
+    </div>
+    <div style="height: 220px;">
+      <canvas id="barChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Recent Logs -->
+  <div class="card">
+    <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">เหตุการณ์ล่าสุด</h3>
+    <div class="log-list" id="logContainer">
+      <div style="color: #a0aec0; font-size: 14px;">ยังไม่มีข้อมูลเหตุการณ์...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // MQTT Config
+  const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
+  let mode = 'live';
+  let mqttClient = null;
+
+  // --- 1. คำนวณวันย้อนหลัง 7 วันจริง ---
+  const dayNames = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+  function getLast7DaysLabels() {
+    const labels = [];
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(today.getDate() - i);
+      labels.push(dayNames[d.getDay()]);
+    }
+    return labels;
+  }
+
+  // ดึงข้อมูลย้อนหลังที่เคยเซฟไว้ (ถ้ามี) ไม่งั้นให้เริ่มที่ 0
+  function getStored7DaysData() {
+    const stored = localStorage.getItem('bottle_history_7days');
+    if (stored) {
+      try { return JSON.parse(stored); } catch(e) {}
+    }
+    return [0, 0, 0, 0, 0, 0, 0]; // เริ่มต้นด้วย 0 ทั้งหมด
+  }
+
+  let real7DaysData = getStored7DaysData();
+
+  // --- 2. Gauge Chart ---
+  const ctxGauge = document.getElementById('gaugeChart').getContext('2d');
+  const gaugeChart = new Chart(ctxGauge, {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [0, 100],
+        backgroundColor: ['#0b6cb1', '#e2e8f0'],
+        borderWidth: 0
+      }]
+    },
+    options: { cutout: '80%', plugins: { tooltip: { enabled: false } } }
+  });
+
+  // --- 3. Bar Chart (7 Days - Real Data Only) ---
+  const ctxBar = document.getElementById('barChart').getContext('2d');
+  const barChart = new Chart(ctxBar, {
+    type: 'bar',
+    data: {
+      labels: getLast7DaysLabels(),
+      datasets: [{
+        data: real7DaysData,
+        backgroundColor: real7DaysData.map((val, idx) => idx === 6 ? '#0b6cb1' : '#90cdf4'),
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { borderDash: [5, 5] }, suggestedMax: 2000 },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  // --- 4. Update UI ---
+  function updateUI(data) {
+    const today = data.today_ml || 0;
+    const goal = data.goal_ml || 2000;
+    const percent = Math.min(Math.round((today / goal) * 100), 100);
+    const remain = Math.max(goal - today, 0);
+
+    // Progress
+    document.getElementById('lblPercent').innerText = percent + '%';
+    document.getElementById('lblToday').innerText = today + ' มล.';
+    document.getElementById('lblGoal').innerText = goal + ' มล.';
+    document.getElementById('lblRemain').innerText = remain + ' มล.';
+    
+    gaugeChart.data.datasets[0].data = [percent, 100 - percent];
+    gaugeChart.update();
+
+    // Bottle Fill
+    const water = data.water_ml || 0;
+    const waterPercent = Math.min((water / 800) * 100, 100);
+    document.getElementById('waterFill').style.height = waterPercent + '%';
+    document.getElementById('lblWater').innerText = Math.round(water) + ' มล.';
+    document.getElementById('lblWeight').innerText = (data.weight_g || 0).toFixed(1) + ' g';
+    document.getElementById('lblRssi').innerText = (data.rssi || -60) + ' dBm';
+    
+    // State Badge
+    const stateMap = { 'NO_BOTTLE': 'ยกลอย/ยกขวด', 'SETTLING': 'กำลังชั่ง...', 'IDLE': 'วางนิ่ง' };
+    document.getElementById('lblState').innerText = stateMap[data.state] || data.state;
+
+    // Uptime
+    if (data.uptime_s) {
+      const min = Math.floor(data.uptime_s / 60);
+      document.getElementById('lblUptime').innerText = min + ' นาที';
+    }
+
+    // Update แท่งกราฟของวันปัจจุบัน (แท่งสุดท้ายIndex 6) ด้วยค่าจริง
+    if (mode === 'live') {
+      real7DaysData[6] = today;
+      barChart.data.datasets[0].data = real7DaysData;
+      barChart.data.datasets[0].backgroundColor = real7DaysData.map((val, idx) => idx === 6 ? '#0b6cb1' : '#90cdf4');
+      barChart.update();
+      localStorage.setItem('bottle_history_7days', JSON.stringify(real7DaysData));
+    }
+  }
+
+  function addLog(type, amount) {
+    const container = document.getElementById('logContainer');
+    const timeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    
+    const isDrink = type === 'drink';
+    const html = `
+      <div class="log-item">
+        <span class="time">${timeStr}</span>
+        <span class="type">${isDrink ? 'ดื่มน้ำ' : 'เติมน้ำ'}</span>
+        <span class="amount ${isDrink ? 'drink' : 'refill'}">${isDrink ? '-' : '+'}${amount} มล.</span>
+      </div>
+    `;
+    
+    if (container.children[0]?.innerText.includes('ยังไม่มี')) container.innerHTML = '';
+    container.insertAdjacentHTML('afterbegin', html);
+    document.getElementById('lblLastDrink').innerText = timeStr;
+  }
+
+  function initMQTT() {
+    mqttClient = mqtt.connect(MQTT_BROKER);
+
+    mqttClient.on('connect', () => {
+      console.log('Connected to MQTT');
+      mqttClient.subscribe('smartbottle/#'); // Subscribe ครอบคลุมทั้งหมด
+    });
+
+    mqttClient.on('message', (topic, message) => {
+      if (mode !== 'live') return;
+      try {
+        const payload = JSON.parse(message.toString());
+        if (topic.endsWith('/status')) updateUI(payload);
+        if (topic.endsWith('/drink')) addLog('drink', payload.ml);
+        if (topic.endsWith('/refill')) addLog('refill', payload.ml);
+      } catch (e) { console.error(e); }
+    });
+  }
+
+  function setMode(newMode) {
+    mode = newMode;
+    document.getElementById('btnLive').classList.toggle('active', mode === 'live');
+    document.getElementById('btnDemo').classList.toggle('active', mode === 'demo');
+
+    if (mode === 'demo') {
+      updateUI({
+        state: 'IDLE',
+        weight_g: 870.0,
+        water_ml: 620,
+        today_ml: 1250,
+        goal_ml: 2000,
+        rssi: -58,
+        uptime_s: 5400
+      });
+      barChart.data.datasets[0].data = [1850, 2100, 1400, 1960, 2250, 1700, 1250];
+      barChart.update();
+      document.getElementById('lblLastDrink').innerText = '1 ชม. 35 นาทีที่แล้ว';
+      document.getElementById('logContainer').innerHTML = `
+        <div class="log-item"><span class="time">18:44</span><span class="type">ดื่มน้ำ</span><span class="amount drink">-120 มล.</span></div>
+        <div class="log-item"><span class="time">17:59</span><span class="type">เติมน้ำ</span><span class="amount refill">+500 มล.</span></div>
+        <div class="log-item"><span class="time">16:49</span><span class="type">ดื่มน้ำ</span><span class="amount drink">-180 มล.</span></div>
+      `;
+    } else {
+      barChart.data.datasets[0].data = real7DaysData;
+      barChart.update();
+      document.getElementById('logContainer').innerHTML = '<div style="color: #a0aec0; font-size: 14px;">ยังไม่มีข้อมูลเหตุการณ์...</div>';
+      document.getElementById('lblLastDrink').innerText = '-';
+    }
+  }
+
+  initMQTT();
+</script>
+
+</body>
+</html>
