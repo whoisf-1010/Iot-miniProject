@@ -4,13 +4,13 @@
 [![Sensor](https://img.shields.io/badge/Sensor-HX711%20%2B%20Load%20Cell-green)](https://www.hx711.com/)
 [![Protocol](https://img.shields.io/badge/Protocol-MQTT-orange)](https://mqtt.org/)
 
-โครงการนี้เป็นส่วนหนึ่งของ **Mini Project รายวิชา IoT (Internet of Things)** สำหรับนักศึกษาภาควิชาวิศวกรรมคอมพิวเตอร์
+โครงการนี้เป็นส่วนหนึ่งของ **Mini Project รายวิชา IoT (Internet of Things)** 
 
 ระบบ **Smart Water Bottle** ถูกออกแบบมาเพื่อตรวจจับ ติดตาม และบันทึกปริมาณการดื่มน้ำในชีวิตประจำวันแบบ Real-time โดยใช้อุปกรณ์ฮาร์ดแวร์วัดน้ำหนัก ประมวลผลด้วย State Machine เพื่อกรอง สัญญาณรบกวน (Noise Filter) และส่งข้อมูลผ่านโปรโตคอล MQTT เข้าสู่ Web Dashboard 
 
 ---
 
-## ฟีเจอร์หลัก (Key Features)
+## ฟีเจอร์หลัก 
 
 - **Pure State Machine Architecture:** จัดการสถานะการทำงานด้วย Finite State Machine (`NO_BOTTLE`, `SETTLING`, `IDLE`) ช่วยแยกแยะสถานะการวางขวด ยกขวด และรอน้ำหนักนิ่งได้อย่างแม่นยำ
 - **Noise Filtering & Event Detection:** มีอัลกอริทึมกรอง สัญญาณขยะจาก Load Cell และจำแนกพฤติกรรมผู้ใช้ระหว่าง **"การจิบน้ำ" (Drink)** กับ **"การเติมน้ำ" (Refill)** อัตโนมัติ
@@ -19,7 +19,7 @@
 
 ---
 
-## อุปกรณ์และเทคโนโลยีที่ใช้ (Hardware & Software)
+## อุปกรณ์และเทคโนโลยีที่ใช้ 
 
 ### Hardware
 - **Microcontroller:** ESP8266 (NodeMCU v2)
@@ -33,7 +33,7 @@
 
 ---
 
-## สถาปัตยกรรมระบบ (System Architecture)
+## สถาปัตยกรรมระบบ 
 
 ```text
 [ Load Cell + HX711 ]
