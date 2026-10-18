@@ -44,4 +44,3 @@
           ▼ (MQTT Protocol via WebSocket/TCP)
    [ MQTT Broker: broker.emqx.io ]
           ├──► [ Web Dashboard (index.html) ]
-          └──► [ Node-RED ] 
