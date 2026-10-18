@@ -4,9 +4,9 @@
 [![Sensor](https://img.shields.io/badge/Sensor-HX711%20%2B%20Load%20Cell-green)](https://www.hx711.com/)
 [![Protocol](https://img.shields.io/badge/Protocol-MQTT-orange)](https://mqtt.org/)
 
-โครงการนี้เป็นส่วนหนึ่งของ **Mini Project รายวิชา IoT (Internet of Things)** สำหรับนักศึกษาภาควิชาวิศวกรรมคอมพิวเตอร์ (Computer Engineering - CPE) 
+โครงการนี้เป็นส่วนหนึ่งของ **Mini Project รายวิชา IoT (Internet of Things)** สำหรับนักศึกษาภาควิชาวิศวกรรมคอมพิวเตอร์
 
-ระบบ **Smart Water Bottle** ถูกออกแบบมาเพื่อตรวจจับ ติดตาม และบันทึกปริมาณการดื่มน้ำในชีวิตประจำวันแบบ Real-time โดยใช้อุปกรณ์ฮาร์ดแวร์วัดน้ำหนัก ประมวลผลด้วย State Machine เพื่อกรอง สัญญาณรบกวน (Noise Filter) และส่งข้อมูลผ่านโปรโตคอล MQTT เข้าสู่ Web Dashboard และแจ้งเตือนผ่าน LINE Messaging API
+ระบบ **Smart Water Bottle** ถูกออกแบบมาเพื่อตรวจจับ ติดตาม และบันทึกปริมาณการดื่มน้ำในชีวิตประจำวันแบบ Real-time โดยใช้อุปกรณ์ฮาร์ดแวร์วัดน้ำหนัก ประมวลผลด้วย State Machine เพื่อกรอง สัญญาณรบกวน (Noise Filter) และส่งข้อมูลผ่านโปรโตคอล MQTT เข้าสู่ Web Dashboard 
 
 ---
 
@@ -16,16 +16,14 @@
 - **Noise Filtering & Event Detection:** มีอัลกอริทึมกรอง สัญญาณขยะจาก Load Cell และจำแนกพฤติกรรมผู้ใช้ระหว่าง **"การจิบน้ำ" (Drink)** กับ **"การเติมน้ำ" (Refill)** อัตโนมัติ
 - **Wi-Fi Provisioning:** เชื่อมต่อ Wi-Fi ผ่าน **WiFiManager** (Captive Portal) โดยไม่ต้อง Hardcode ชื่อรหัสผ่านลงในตัวโปรแกรม
 - **Real-time Web Dashboard:** หน้าเว็บ Dashboard (HTML/JS/Chart.js) แสดงผลกราฟเปอร์เซ็นต์ ระดับน้ำในขวด กราฟสรุปประวัติย้อนหลัง และ Log เหตุการณ์แบบ Real-time
-- **Automation & Push Notification:** รองรับการเชื่อมต่อกับ **Node-RED** และ **LINE Messaging API** เพื่อส่งข้อความแจ้งเตือนเข้าโทรศัพท์มือถือเมื่อไม่ได้ดื่มน้ำตามระยะเวลาที่กำหนด
 
 ---
 
 ## อุปกรณ์และเทคโนโลยีที่ใช้ (Hardware & Software)
 
 ### Hardware
-- **Microcontroller:** ESP8266 (NodeMCU v2/v3)
-- **Weight Sensor:** Load Cell (รองรับพิกัดน้ำหนักขวดน้ำ) + HX711 Module
-- **Power Supply:** USB 5V
+- **Microcontroller:** ESP8266 (NodeMCU v2)
+- **Weight Sensor:** Load Cell + HX711 Module
 
 ### Software & Protocols
 - **Development Environment:** VS Code + PlatformIO (C/C++)
