@@ -3,69 +3,101 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Bottle Dashboard</title>
+  <title>Smart Water Bottle Dashboard</title>
   <!-- Chart.js & MQTT.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; font-family: 'Sukhumvit Set', 'Sarabun', system-ui, sans-serif; margin: 0; padding: 0; }
-    body { background-color: #f1f4f5; color: #2d3748; padding: 24px; }
-    .container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+    * { box-sizing: border-box; font-family: 'Kanit', sans-serif; margin: 0; padding: 0; }
+    body { background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 50%, #f1f5f9 100%); color: #1e293b; padding: 24px; min-height: 100vh; }
+    .container { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
     
     /* Header */
-    .header { display: flex; justify-content: space-between; align-items: center; }
-    .header-title p { font-size: 13px; color: #718096; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
-    .header-title h1 { font-size: 24px; font-weight: 700; color: #1a202c; }
+    .header { display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); padding: 16px 24px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.8); box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+    .header-title p { font-size: 12px; color: #0284c7; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
+    .header-title h1 { font-size: 24px; font-weight: 700; color: #0f172a; }
     .header-controls { display: flex; gap: 8px; }
-    .btn { background: #e2e8f0; border: none; padding: 8px 16px; border-radius: 20px; font-size: 14px; cursor: pointer; transition: 0.2s; }
-    .btn.active { background: #0b6cb1; color: white; }
+    .btn { background: #f1f5f9; border: none; padding: 8px 18px; border-radius: 20px; font-size: 14px; cursor: pointer; transition: all 0.3s ease; font-weight: 600; color: #64748b; }
+    .btn.active { background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: white; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3); }
+    
+    .btn-action { background: #0284c7; color: white; border: none; padding: 8px 14px; border-radius: 10px; font-size: 13px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(2, 132, 199, 0.2); }
+    .btn-action:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3); }
+    .btn-action.secondary { background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; box-shadow: none; }
+    .btn-action.secondary:hover { background: #f1f5f9; color: #0f172a; }
+
+    /* Alert Banner */
+    .alert-banner { display: none; background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-left: 6px solid #f97316; color: #9a3412; padding: 16px 20px; border-radius: 16px; font-weight: 600; align-items: center; justify-content: space-between; box-shadow: 0 4px 15px rgba(249, 115, 22, 0.15); }
     
     /* Grid Cards */
     .grid-top { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .card { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
+    .card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-radius: 20px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.9); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); transition: transform 0.3s ease; }
+    .card:hover { transform: translateY(-2px); }
     
-    /* Left Card - Circular Progress */
-    .progress-card { display: flex; align-items: center; gap: 30px; }
+    /* Progress Card */
+    .progress-card { display: flex; align-items: center; gap: 24px; }
     .chart-container { position: relative; width: 160px; height: 160px; flex-shrink: 0; }
     .chart-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
-    .chart-label .percent { font-size: 28px; font-weight: 800; color: #1a202c; }
-    .chart-label .sub { font-size: 11px; color: #718096; }
-    .stats-list { display: flex; flex-direction: column; gap: 10px; }
-    .stat-item .label { font-size: 12px; color: #718096; }
-    .stat-item .value { font-size: 18px; font-weight: 700; color: #2b6cb0; }
-    .stat-item .value-sm { font-size: 14px; color: #4a5568; }
+    .chart-label .percent { font-size: 32px; font-weight: 800; color: #0284c7; }
+    .chart-label .sub { font-size: 11px; color: #64748b; font-weight: 500; }
+    .stats-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+    .stat-item .label { font-size: 12px; color: #64748b; font-weight: 500; }
+    .stat-item .value { font-size: 20px; font-weight: 700; color: #0369a1; }
+    .stat-item .value-sm { font-size: 14px; color: #334155; font-weight: 600; }
 
-    /* Right Card - Bottle Canvas */
+    /* Bottle Card */
     .bottle-card { display: flex; align-items: center; justify-content: space-around; }
-    .bottle-wrapper { position: relative; width: 90px; height: 200px; border: 3px solid #2d3748; border-radius: 12px 12px 20px 20px; overflow: hidden; background: #fff; }
-    .bottle-cap { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); width: 34px; height: 12px; background: #2d3748; border-radius: 4px 4px 0 0; }
-    .water-fill { position: absolute; bottom: 0; width: 100%; background: #53a6d8; transition: height 0.5s ease; }
-    .badge { display: inline-block; padding: 4px 12px; background: #ebf8ff; color: #2b6cb0; border-radius: 6px; font-size: 13px; font-weight: 600; margin-bottom: 12px; }
-    .bottle-stats { display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
-    .bottle-stats .row { display: flex; justify-content: space-between; gap: 20px; }
-    .bottle-stats .val { font-weight: 600; }
+    .bottle-wrapper { position: relative; width: 84px; height: 190px; border: 3px solid #334155; border-radius: 16px 16px 24px 24px; overflow: hidden; background: #f8fafc; }
+    .bottle-cap { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 30px; height: 10px; background: #334155; border-radius: 4px 4px 0 0; }
+    .water-fill { position: absolute; bottom: 0; width: 100%; background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%); transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+    .badge { display: inline-block; padding: 4px 12px; background: #e0f2fe; color: #0369a1; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+    .bottle-stats { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #475569; }
+    .bottle-stats .row { display: flex; justify-content: space-between; gap: 16px; }
+    .bottle-stats .val { font-weight: 700; color: #0f172a; }
+
+    /* Digital Pet Card */
+    .pet-card { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%); border: 1px solid #bbf7d0; }
+    .pet-avatar { font-size: 68px; margin: 8px 0; animation: floatPet 3s ease-in-out infinite; }
+    @keyframes floatPet { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    .pet-speech { background: #ffffff; border: 1px solid #cbd5e1; padding: 10px 16px; border-radius: 14px; font-size: 13px; font-weight: 600; color: #1e293b; box-shadow: 0 4px 12px rgba(0,0,0,0.04); position: relative; }
+    .pet-speech::after { content: ''; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); border-width: 0 8px 8px 8px; border-style: solid; border-color: transparent transparent #ffffff transparent; }
+
+    /* Achievement Card */
+    .achievement-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #0f172a; }
+    .badge-list { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .badge-item { display: flex; align-items: center; gap: 6px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; opacity: 0.4; filter: grayscale(100%); transition: all 0.3s ease; }
+    .badge-item.unlocked { opacity: 1; filter: none; background: #fef9c3; border-color: #fde047; color: #854d0e; box-shadow: 0 2px 8px rgba(250, 204, 21, 0.2); }
+
+    /* Controls Bar */
+    .control-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
     /* Bar Chart Section */
     .chart-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .chart-card-header h3 { font-size: 16px; font-weight: 700; }
-    .chart-card-header span { font-size: 12px; color: #a0aec0; }
+    .chart-card-header h3 { font-size: 16px; font-weight: 700; color: #0f172a; }
+    .chart-card-header span { font-size: 12px; color: #94a3b8; }
 
     /* Logs Section */
-    .log-list { display: flex; flex-direction: column; gap: 12px; max-height: 200px; overflow-y: auto; }
-    .log-item { display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid #edf2f7; font-size: 14px; }
-    .log-item .time { color: #a0aec0; width: 60px; }
-    .log-item .type { flex-grow: 1; font-weight: 600; }
-    .log-item .amount.drink { color: #2b6cb0; font-weight: 700; }
-    .log-item .amount.refill { color: #38a169; font-weight: 700; }
+    .log-list { display: flex; flex-direction: column; gap: 10px; max-height: 180px; overflow-y: auto; }
+    .log-item { display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+    .log-item .time { color: #94a3b8; width: 60px; font-weight: 500; }
+    .log-item .type { flex-grow: 1; font-weight: 600; color: #334155; }
+    .log-item .amount.drink { color: #0284c7; font-weight: 700; }
+    .log-item .amount.refill { color: #16a34a; font-weight: 700; }
   </style>
 </head>
 <body>
 
 <div class="container">
+  <!-- Alert Banner -->
+  <div id="alertBanner" class="alert-banner">
+    <span>⚠️ ไม่ได้ดื่มน้ำมานานเกินกำหนดแล้วนะ! ออกไปจิบน้ำสักนิดครับ 💧 <span id="nextAlertTimer" style="font-weight: 400; font-size: 13px; margin-left: 8px; color: #c2410c;"></span></span>
+    <button onclick="dismissAlert()" style="background: transparent; border: none; font-size: 18px; cursor: pointer; color: #9a3412;">✕</button>
+  </div>
+
   <!-- Header -->
   <div class="header">
     <div class="header-title">
-      <p>Smart Bottle</p>
+      <p>Smart Water Bottle Dashboard</p>
       <h1>ยอดดื่มน้ำของวันนี้</h1>
     </div>
     <div class="header-controls">
@@ -125,6 +157,37 @@
     </div>
   </div>
 
+  <!-- Second Row (Digital Pet & Achievement System) -->
+  <div class="grid-top">
+    <!-- Digital Pet Card -->
+    <div class="card pet-card">
+      <div style="font-size: 12px; font-weight: 700; color: #16a34a; text-transform: uppercase; letter-spacing: 1px;">Digital Hydration Pet 🪴</div>
+      <div class="pet-avatar" id="petAvatar">😴</div>
+      <div class="pet-speech" id="petSpeech">"หิวน้ำจังเลย... ดื่มน้ำกันเถอะ"</div>
+    </div>
+
+    <!-- Achievement & Streak Card -->
+    <div class="card achievement-card">
+      <h3>🔥 Streak การดื่มน้ำต่อเนื่อง: <span id="lblStreak" style="color: #f97316; font-size: 24px;">0</span> วัน</h3>
+      <div style="font-size: 13px; color: #64748b; margin-bottom: 10px;">สะสมวันบรรลุเป้าหมายเพื่อปลดล็อกเหรียญเกียรติยศ!</div>
+      <div class="badge-list">
+        <div class="badge-item" id="badge1">💧 ดื่มน้ำวันแรก</div>
+        <div class="badge-item" id="badge3">🔥 3 วันติดต่อกัน</div>
+        <div class="badge-item" id="badge7">🏆 7 วัน Hydration Hero</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Action Control Bar -->
+  <div class="card control-card">
+    <span style="font-size: 14px; font-weight: 700; color: #334155;">⚡ คำสั่งควบคุมด่วน (Action Controls):</span>
+    <div style="display: flex; gap: 8px;">
+      <button class="btn-action" onclick="sendTareCommand()">⚖️ Tare เซตน้ำหนักศูนย์</button>
+      <button class="btn-action secondary" onclick="triggerInactivityAlert()">🔔 ทดสอบเตือนดื่มน้ำ</button>
+      <button class="btn-action secondary" onclick="sendResetTodayCommand()">🔄 รีเซ็ตยอดวันนี้</button>
+    </div>
+  </div>
+
   <!-- 7-Day History Chart -->
   <div class="card">
     <div class="chart-card-header">
@@ -140,7 +203,7 @@
   <div class="card">
     <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">เหตุการณ์ล่าสุด</h3>
     <div class="log-list" id="logContainer">
-      <div style="color: #a0aec0; font-size: 14px;">ยังไม่มีข้อมูลเหตุการณ์...</div>
+      <div style="color: #94a3b8; font-size: 14px;">ยังไม่มีข้อมูลเหตุการณ์...</div>
     </div>
   </div>
 </div>
@@ -164,13 +227,12 @@
     return labels;
   }
 
-  // ดึงข้อมูลย้อนหลังที่เคยเซฟไว้ (ถ้ามี) ไม่งั้นให้เริ่มที่ 0
   function getStored7DaysData() {
     const stored = localStorage.getItem('bottle_history_7days');
     if (stored) {
       try { return JSON.parse(stored); } catch(e) {}
     }
-    return [0, 0, 0, 0, 0, 0, 0]; // เริ่มต้นด้วย 0 ทั้งหมด
+    return [0, 0, 0, 0, 0, 0, 0];
   }
 
   let real7DaysData = getStored7DaysData();
@@ -182,14 +244,14 @@
     data: {
       datasets: [{
         data: [0, 100],
-        backgroundColor: ['#0b6cb1', '#e2e8f0'],
+        backgroundColor: ['#0284c7', '#e2e8f0'],
         borderWidth: 0
       }]
     },
     options: { cutout: '80%', plugins: { tooltip: { enabled: false } } }
   });
 
-  // --- 3. Bar Chart (7 Days - Real Data Only) ---
+  // --- 3. Bar Chart ---
   const ctxBar = document.getElementById('barChart').getContext('2d');
   const barChart = new Chart(ctxBar, {
     type: 'bar',
@@ -197,8 +259,8 @@
       labels: getLast7DaysLabels(),
       datasets: [{
         data: real7DaysData,
-        backgroundColor: real7DaysData.map((val, idx) => idx === 6 ? '#0b6cb1' : '#90cdf4'),
-        borderRadius: 4
+        backgroundColor: real7DaysData.map((val, idx) => idx === 6 ? '#0284c7' : '#bae6fd'),
+        borderRadius: 6
       }]
     },
     options: {
@@ -212,11 +274,49 @@
     }
   });
 
-  // --- 4. Update UI ---
+  // --- 4. Digital Pet & Streak Logic ---
+  function updateDigitalPet(percent) {
+    const avatar = document.getElementById('petAvatar');
+    const speech = document.getElementById('petSpeech');
+
+    if (percent >= 100) {
+      avatar.innerText = '🌸';
+      speech.innerText = '"สุดยอด! วันนี้ดื่มน้ำครบตามเป้าหมายแล้ว 🎉"';
+    } else if (percent >= 70) {
+      avatar.innerText = '🌿';
+      speech.innerText = '"เกือบถึงเป้าหมายแล้ว อีกนิดเดียว!"';
+    } else if (percent >= 30) {
+      avatar.innerText = '🌱';
+      speech.innerText = '"สดชื่นขึ้นแล้ว! ดื่มอีกเรื่อยๆ นะ"';
+    } else {
+      avatar.innerText = '😴';
+      speech.innerText = '"หิวน้ำจังเลย... ดื่มน้ำกันเถอะ"';
+    }
+  }
+
+  function updateStreakAndBadges(todayMl, goalMl) {
+    let streak = parseInt(localStorage.getItem('water_streak')) || 0;
+    const lastSuccessDate = localStorage.getItem('water_last_success_date');
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    if (todayMl >= goalMl && lastSuccessDate !== todayStr) {
+      streak += 1;
+      localStorage.setItem('water_streak', streak);
+      localStorage.setItem('water_last_success_date', todayStr);
+    }
+
+    document.getElementById('lblStreak').innerText = streak;
+
+    if (streak >= 1) document.getElementById('badge1').classList.add('unlocked');
+    if (streak >= 3) document.getElementById('badge3').classList.add('unlocked');
+    if (streak >= 7) document.getElementById('badge7').classList.add('unlocked');
+  }
+
+  // --- 5. Update UI ---
   function updateUI(data) {
     const today = data.today_ml || 0;
     const goal = data.goal_ml || 2000;
-    const percent = Math.min(Math.round((today / goal) * 100), 100);
+    const percent = Math.round((today / goal) * 100);
     const remain = Math.max(goal - today, 0);
 
     // Progress
@@ -225,7 +325,8 @@
     document.getElementById('lblGoal').innerText = goal + ' มล.';
     document.getElementById('lblRemain').innerText = remain + ' มล.';
     
-    gaugeChart.data.datasets[0].data = [percent, 100 - percent];
+    const chartProgress = Math.min(percent, 100);
+    gaugeChart.data.datasets[0].data = [chartProgress, 100 - chartProgress];
     gaugeChart.update();
 
     // Bottle Fill
@@ -246,11 +347,13 @@
       document.getElementById('lblUptime').innerText = min + ' นาที';
     }
 
-    // Update แท่งกราฟของวันปัจจุบัน (แท่งสุดท้ายIndex 6) ด้วยค่าจริง
+    updateDigitalPet(percent);
+    updateStreakAndBadges(today, goal);
+
     if (mode === 'live') {
       real7DaysData[6] = today;
       barChart.data.datasets[0].data = real7DaysData;
-      barChart.data.datasets[0].backgroundColor = real7DaysData.map((val, idx) => idx === 6 ? '#0b6cb1' : '#90cdf4');
+      barChart.data.datasets[0].backgroundColor = real7DaysData.map((val, idx) => idx === 6 ? '#0284c7' : '#bae6fd');
       barChart.update();
       localStorage.setItem('bottle_history_7days', JSON.stringify(real7DaysData));
     }
@@ -261,6 +364,10 @@
     const timeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
     
     const isDrink = type === 'drink';
+    if (isDrink) {
+      resetDrinkTimer();
+    }
+
     const html = `
       <div class="log-item">
         <span class="time">${timeStr}</span>
@@ -274,12 +381,13 @@
     document.getElementById('lblLastDrink').innerText = timeStr;
   }
 
+  // --- MQTT & Control Commands ---
   function initMQTT() {
     mqttClient = mqtt.connect(MQTT_BROKER);
 
     mqttClient.on('connect', () => {
       console.log('Connected to MQTT');
-      mqttClient.subscribe('smartbottle/#'); // Subscribe ครอบคลุมทั้งหมด
+      mqttClient.subscribe('smartbottle/#');
     });
 
     mqttClient.on('message', (topic, message) => {
@@ -293,6 +401,24 @@
     });
   }
 
+  function sendTareCommand() {
+    if (mqttClient && mqttClient.connected) {
+      mqttClient.publish('smartbottle/cmd/tare', 'tare');
+      alert('ส่งคำสั่ง Tare เซตน้ำหนักศูนย์ไปยังบอร์ดเรียบร้อยแล้ว!');
+    } else {
+      alert('ยังไม่ได้เชื่อมต่อ MQTT');
+    }
+  }
+
+  function sendResetTodayCommand() {
+    if (mqttClient && mqttClient.connected) {
+      mqttClient.publish('smartbottle/cmd/reset', 'reset');
+      alert('ส่งคำสั่งรีเซ็ตยอดรวมวันนี้เรียบร้อยแล้ว!');
+    } else {
+      alert('ยังไม่ได้เชื่อมต่อ MQTT');
+    }
+  }
+
   function setMode(newMode) {
     mode = newMode;
     document.getElementById('btnLive').classList.toggle('active', mode === 'live');
@@ -303,12 +429,12 @@
         state: 'IDLE',
         weight_g: 870.0,
         water_ml: 620,
-        today_ml: 1250,
+        today_ml: 2150,
         goal_ml: 2000,
         rssi: -58,
         uptime_s: 5400
       });
-      barChart.data.datasets[0].data = [1850, 2100, 1400, 1960, 2250, 1700, 1250];
+      barChart.data.datasets[0].data = [1850, 2100, 1400, 1960, 2250, 1700, 2150];
       barChart.update();
       document.getElementById('lblLastDrink').innerText = '1 ชม. 35 นาทีที่แล้ว';
       document.getElementById('logContainer').innerHTML = `
@@ -319,10 +445,93 @@
     } else {
       barChart.data.datasets[0].data = real7DaysData;
       barChart.update();
-      document.getElementById('logContainer').innerHTML = '<div style="color: #a0aec0; font-size: 14px;">ยังไม่มีข้อมูลเหตุการณ์...</div>';
+      document.getElementById('logContainer').innerHTML = '<div style="color: #94a3b8; font-size: 14px;">ยังไม่มีข้อมูลเหตุการณ์...</div>';
       document.getElementById('lblLastDrink').innerText = '-';
     }
   }
+
+  // --- Inactivity Alert System ---
+  const INACTIVE_LIMIT_MS = 2 * 60 * 60 * 1000;
+  let lastDrinkTime = Date.now();
+  let alertTriggered = false;
+
+  if ("Notification" in window && Notification.permission !== "granted") {
+    Notification.requestPermission();
+  }
+
+  function playAlertSound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = 587.33;
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch (e) {}
+  }
+
+  function triggerInactivityAlert() {
+    if (alertTriggered) return;
+    alertTriggered = true;
+
+    const banner = document.getElementById('alertBanner');
+    if (banner) banner.style.display = 'flex';
+
+    playAlertSound();
+
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification("Smart Water Bottle 💧", {
+        body: "คุณไม่ได้ดื่มน้ำนานเกิน 2 ชั่วโมงแล้วนะ! อย่าลืมเติมความสดชื่นครับ",
+        icon: "https://cdn-icons-png.flaticon.com/512/3105/3105807.png"
+      });
+    }
+  }
+
+  function dismissAlert() {
+    const banner = document.getElementById('alertBanner');
+    if (banner) banner.style.display = 'none';
+  }
+
+  function resetDrinkTimer() {
+    lastDrinkTime = Date.now();
+    alertTriggered = false;
+    dismissAlert();
+  }
+
+  function updateNextAlertTimer() {
+    const timerSpan = document.getElementById('nextAlertTimer');
+    if (!timerSpan) return;
+
+    const elapsed = Date.now() - lastDrinkTime;
+    const remaining = INACTIVE_LIMIT_MS - elapsed;
+
+    if (remaining <= 0) {
+      timerSpan.innerText = '(เกินเวลาเตือนแล้ว!)';
+    } else {
+      const totalSeconds = Math.floor(remaining / 1000);
+      const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+      const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+      const secs = String(totalSeconds % 60).padStart(2, '0');
+      
+      const nextTime = new Date(lastDrinkTime + INACTIVE_LIMIT_MS);
+      const nextTimeStr = nextTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+      timerSpan.innerText = `(แจ้งเตือนครั้งถัดไปเวลา ${nextTimeStr} น. / เหลืออีก ${hrs}:${mins}:${secs})`;
+    }
+  }
+
+  setInterval(updateNextAlertTimer, 1000);
+
+  setInterval(() => {
+    const elapsed = Date.now() - lastDrinkTime;
+    if (elapsed >= INACTIVE_LIMIT_MS) {
+      triggerInactivityAlert();
+    }
+  }, 10000);
 
   initMQTT();
 </script>
