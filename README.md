@@ -1,4 +1,4 @@
-# Smart Water Bottle — IoT Mini Project
+# JibDiPhee — IoT Mini Project
 
 [![Board](https://img.shields.io/badge/Board-ESP8266%20NodeMCU-blue)](https://www.espressif.com/)
 [![Sensor](https://img.shields.io/badge/Sensor-HX711%20%2B%20Load%20Cell-green)](https://www.hx711.com/)
