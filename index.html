@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Water Bottle Dashboard</title>
+  <title>JibDiPhee Dashboard</title>
   <!-- Chart.js & MQTT.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
@@ -90,19 +90,18 @@
 <div class="container">
   <!-- Alert Banner -->
   <div id="alertBanner" class="alert-banner">
-    <span>⚠️ ไม่ได้ดื่มน้ำมานานเกินกำหนดแล้วนะ! ออกไปจิบน้ำสักนิดครับ 💧 <span id="nextAlertTimer" style="font-weight: 400; font-size: 13px; margin-left: 8px; color: #c2410c;"></span></span>
+    <span>ไม่ได้ดื่มน้ำมานานเกินกำหนดแล้วนะ! ออกไปจิบน้ำสักนิดครับ<span id="nextAlertTimer" style="font-weight: 400; font-size: 13px; margin-left: 8px; color: #c2410c;"></span></span>
     <button onclick="dismissAlert()" style="background: transparent; border: none; font-size: 18px; cursor: pointer; color: #9a3412;">✕</button>
   </div>
 
   <!-- Header -->
   <div class="header">
     <div class="header-title">
-      <p>Smart Water Bottle Dashboard</p>
+      <p>JibDiPhee</p>
       <h1>ยอดดื่มน้ำของวันนี้</h1>
     </div>
     <div class="header-controls">
-      <button class="btn active" id="btnLive" onclick="setMode('live')">โหมดจริง (MQTT)</button>
-      <button class="btn" id="btnDemo" onclick="setMode('demo')">ลองโหมดเดโม</button>
+      <button class="btn active" id="btnLive" onclick="setMode('live')">LIVE</button>
     </div>
   </div>
 
@@ -161,7 +160,7 @@
   <div class="grid-top">
     <!-- Digital Pet Card -->
     <div class="card pet-card">
-      <div style="font-size: 12px; font-weight: 700; color: #16a34a; text-transform: uppercase; letter-spacing: 1px;">Digital Hydration Pet</div>
+      <div style="font-size: 12px; font-weight: 700; color: #16a34a; text-transform: uppercase; letter-spacing: 1px;">Digital Pet</div>
         <div class="pet-avatar">
             <img id="petAvatarImg" src="pet_sleep.gif" alt="Digital Pet" style="width: 90px; height: 90px; object-fit: contain;">
         </div>
@@ -181,19 +180,24 @@
   </div>
 
   <!-- Quick Action Control Bar -->
-  <div class="card control-card">
+  <div class="card control-card" style="flex-wrap: wrap;">
     <span style="font-size: 14px; font-weight: 700; color: #334155;">Action Controls</span>
-    <div style="display: flex; gap: 8px;">
-      <button class="btn-action" onclick="sendTareCommand()">Tare เซตน้ำหนักศูนย์</button>
-      <button class="btn-action secondary" onclick="triggerInactivityAlert()">ทดสอบเตือนดื่มน้ำ</button>
-      <button class="btn-action secondary" onclick="sendResetTodayCommand()">รีเซ็ตยอดวันนี้</button>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+      <!-- เพิ่มช่องป้อนและปุ่มตั้งค่า Goal -->
+      <div style="display: flex; gap: 4px; align-items: center;">
+        <input type="number" id="txtGoalInput" placeholder="2000" style="width: 80px; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 13px; outline: none;">
+        <button class="btn-action" onclick="sendSetGoalCommand()">Goal (มล.)</button>
+      </div>
+
+      <button class="btn-action secondary" onclick="sendTareCommand()">Tare น้ำหนัก</button>
+      <button class="btn-action secondary" onclick="triggerInactivityAlert()">ทดสอบเตือน</button>
     </div>
   </div>
 
   <!-- 7-Day History Chart -->
   <div class="card">
     <div class="chart-card-header">
-      <h3>ย้อนหลัง 7 วัน (ข้อมูลจริง)</h3>
+      <h3>ย้อนหลัง 7 วัน</h3>
       <span>เส้นประคือเป้าหมาย</span>
     </div>
     <div style="height: 220px;">
@@ -333,14 +337,14 @@
 
     // Bottle Fill
     const water = data.water_ml || 0;
-    const waterPercent = Math.min((water / 800) * 100, 100);
+    const waterPercent = Math.min((water / 600) * 100, 100);
     document.getElementById('waterFill').style.height = waterPercent + '%';
     document.getElementById('lblWater').innerText = Math.round(water) + ' มล.';
     document.getElementById('lblWeight').innerText = (data.weight_g || 0).toFixed(1) + ' g';
     document.getElementById('lblRssi').innerText = (data.rssi || -60) + ' dBm';
     
     // State Badge
-    const stateMap = { 'NO_BOTTLE': 'ยกลอย/ยกขวด', 'SETTLING': 'กำลังชั่ง...', 'IDLE': 'วางนิ่ง' };
+    const stateMap = { 'NO_BOTTLE': 'ยกขวด', 'SETTLING': 'กำลังชั่ง...', 'IDLE': 'วางนิ่ง' };
     document.getElementById('lblState').innerText = stateMap[data.state] || data.state;
 
     // Uptime
@@ -384,38 +388,91 @@
   }
 
   // --- MQTT & Control Commands ---
-  function initMQTT() {
-    mqttClient = mqtt.connect(MQTT_BROKER);
+ function initMQTT() {
+  // 1. สร้าง Client ID แบบสุ่มทุกครั้งเพื่อป้องกัน Connection ชนกัน
+  const clientId = 'web_dashboard_' + Math.random().toString(16).substring(2, 10);
 
-    mqttClient.on('connect', () => {
-      console.log('Connected to MQTT');
-      mqttClient.subscribe('smartbottle/#');
-    });
+  // 2. ตั้งค่า Connection Options ให้มี Keepalive และ Reconnect ที่เสถียรขึ้น
+  const options = {
+    clientId: clientId,
+    keepalive: 30,          // ส่ง Ping ทุก 30 วินาที
+    clean: true,            // ล้าง session เก่าเมื่อต่อใหม่
+    reconnectPeriod: 2000,  // พยายามต่อใหม่ทุก 2 วินาทีหากหลุด
+    connectTimeout: 5000    // Timeout 5 วินาที
+  };
 
-    mqttClient.on('message', (topic, message) => {
-      if (mode !== 'live') return;
-      try {
-        const payload = JSON.parse(message.toString());
-        if (topic.endsWith('/status')) updateUI(payload);
-        if (topic.endsWith('/drink')) addLog('drink', payload.ml);
-        if (topic.endsWith('/refill')) addLog('refill', payload.ml);
-      } catch (e) { console.error(e); }
+  mqttClient = mqtt.connect(MQTT_BROKER, options);
+
+  mqttClient.on('connect', () => {
+    console.log('Connected to MQTT Broker with ID:', clientId);
+    mqttClient.subscribe('smartbottle/#', (err) => {
+      if (err) console.error('Subscribe Error:', err);
     });
-  }
+  });
+
+  // แสดง Log เมื่อมีการหลุดเชื่อมต่อเพื่อตรวจเช็คปัญหาง่ายขึ้น
+  mqttClient.on('reconnect', () => {
+    console.warn('MQTT Reconnecting...');
+  });
+
+  mqttClient.on('offline', () => {
+    console.warn('MQTT Connection Offline');
+  });
+
+  mqttClient.on('error', (err) => {
+    console.error('MQTT Error:', err);
+  });
+
+  mqttClient.on('message', (topic, message) => {
+    if (mode !== 'live') return;
+    try {
+      const payload = JSON.parse(message.toString());
+      if (topic.endsWith('/status')) updateUI(payload);
+      if (topic.endsWith('/drink')) addLog('drink', payload.ml);
+      if (topic.endsWith('/refill')) addLog('refill', payload.ml);
+
+      if (topic.includes('/daily/')) {
+        real7DaysData[5] = payload.total_ml;
+        barChart.data.datasets[0].data = real7DaysData;
+        barChart.update();
+        localStorage.setItem('bottle_history_7days', JSON.stringify(real7DaysData));
+      }
+    } catch (e) { 
+      console.error('JSON Parse Error:', e); 
+    }
+  });
+}
 
   function sendTareCommand() {
     if (mqttClient && mqttClient.connected) {
       mqttClient.publish('smartbottle/cmd/tare', 'tare');
-      alert('ส่งคำสั่ง Tare เซตน้ำหนักศูนย์ไปยังบอร์ดเรียบร้อยแล้ว!');
+      alert('ส่งคำสั่ง Tare เซตน้ำหนักศูนย์ไปยังบอร์ดเรียบร้อยแล้ว');
     } else {
       alert('ยังไม่ได้เชื่อมต่อ MQTT');
     }
   }
 
-  function sendResetTodayCommand() {
+  function sendSetGoalCommand() {
+    const inputVal = document.getElementById('txtGoalInput').value;
+    const goalMl = parseInt(inputVal);
+
+    if (!goalMl || goalMl <= 0) {
+      alert('กรุณากรอกตัวเลขเป้าหมายที่มากกว่า 0 มล.');
+      return;
+    }
+
+    if (mode === 'demo') {
+      // อัปเดต UI ทันทีหากอยู่ในโหมด Demo
+      document.getElementById('lblGoal').innerText = goalMl + ' มล.';
+      alert(`[Demo Mode] เปลี่ยนเป้าหมายเป็น ${goalMl} มล. เรียบร้อยแล้ว`);
+      return;
+    }
+
     if (mqttClient && mqttClient.connected) {
-      mqttClient.publish('smartbottle/cmd/reset', 'reset');
-      alert('ส่งคำสั่งรีเซ็ตยอดรวมวันนี้เรียบร้อยแล้ว!');
+      // ส่ง Topic: smartbottle/cmd/goal พร้อม Payload ตัวเลข มล.
+      mqttClient.publish('smartbottle/cmd/goal', goalMl.toString());
+      alert(`ส่งคำสั่งเปลี่ยนเป้าหมายเป็น ${goalMl} มล. เรียบร้อยแล้ว`);
+      document.getElementById('txtGoalInput').value = ''; // ล้างค่าในช่องกรอก
     } else {
       alert('ยังไม่ได้เชื่อมต่อ MQTT');
     }
@@ -424,7 +481,6 @@
   function setMode(newMode) {
     mode = newMode;
     document.getElementById('btnLive').classList.toggle('active', mode === 'live');
-    document.getElementById('btnDemo').classList.toggle('active', mode === 'demo');
 
     if (mode === 'demo') {
       updateUI({
@@ -486,8 +542,8 @@
     playAlertSound();
 
     if ("Notification" in window && Notification.permission === "granted") {
-      new Notification("Smart Water Bottle 💧", {
-        body: "คุณไม่ได้ดื่มน้ำนานเกิน 2 ชั่วโมงแล้วนะ! อย่าลืมเติมความสดชื่นครับ",
+      new Notification("Smart Water Bottle", {
+        body: "ดื่มน้ำหน่อยน้องชายยยยยย",
         icon: "https://cdn-icons-png.flaticon.com/512/3105/3105807.png"
       });
     }
@@ -512,7 +568,7 @@
     const remaining = INACTIVE_LIMIT_MS - elapsed;
 
     if (remaining <= 0) {
-      timerSpan.innerText = '(เกินเวลาเตือนแล้ว!)';
+      timerSpan.innerText = '(เกินเวลาเตือนแล้ว)';
     } else {
       const totalSeconds = Math.floor(remaining / 1000);
       const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');

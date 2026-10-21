@@ -32,7 +32,7 @@
 #define DEFAULT_SCALE        721.8f  
 #define DEFAULT_BOTTLE_G     16.0f   
 #define DEFAULT_GOAL_ML      2000
-#define LIFT_THRESHOLD_G     30.0f   
+#define LIFT_THRESHOLD_G     17.0f   
 #define MIN_CHANGE_ML        5       
 #define STABLE_RANGE_G       3.0f    
 #define PUBLISH_INTERVAL_MS  1000
@@ -454,18 +454,28 @@ void setup() {
   EEPROM.begin(sizeof(Settings));
   bool hadSaved = loadSettings();
 
-  // ---------- 1. จัดการ Wi-Fi ด้วย WiFiManager ----------
-  WiFiManager wm; 
+  // ---------- 1. เชื่อมต่อ Wi-Fi ตรงเข้า Hotspot ----------
+  const char* ssid = "fsocool"; // ใส่ชื่อ Hotspot บน Notebook (หรือชื่อที่คุณตั้ง)
+  const char* password = "10102005";     // ใส่รหัสผ่าน Hotspot
 
-  Serial.println("Connecting to WiFi via WiFiManager...");
-  if (!wm.autoConnect("SmartBottleAP")) {
-    Serial.println("[ERROR] Failed to connect and hit timeout");
-    ESP.restart();
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+
+  Serial.print("Connecting to WiFi");
+  int timeout = 0;
+  while (WiFi.status() != WL_CONNECTED && timeout < 30) {
+    delay(1000);
+    Serial.print(".");
+    timeout++;
   }
 
-  Serial.println("\nWiFi Connected!");
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP()); 
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nWiFi Connected!");
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("\n[ERROR] Connection Failed!");
+  }
 
   // ---------- 2. ตั้งค่า HX711 ----------
   scale.begin(HX711_DT_PIN, HX711_SCK_PIN);
